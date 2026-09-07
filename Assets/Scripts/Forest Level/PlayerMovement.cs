@@ -102,6 +102,7 @@ namespace Forestlevel
 
         void FixedUpdate()
         {
+            Debug.Log($"grounded:{isGrounded} moveInput:{moveInput}");
             CheckGround();
             HandleMomentum();
             _rb.linearVelocity = momentum;
@@ -125,11 +126,12 @@ namespace Forestlevel
         void CheckGround()
         {
             float radius = _col.radius * 0.9f;
-            Vector3 origin = transform.position + Vector3.up * (radius + 0.05f);
+            Vector3 origin = _col.bounds.center;
+            float castDistance = _col.bounds.extents.y - radius + groundCheckDistance;
 
             isGrounded = Physics.SphereCast(
                 origin, radius, Vector3.down, out RaycastHit hit,
-                groundCheckDistance, groundMask, QueryTriggerInteraction.Ignore);
+                castDistance, groundMask, QueryTriggerInteraction.Ignore);
 
             groundNormal = isGrounded ? hit.normal : Vector3.up;
         }
