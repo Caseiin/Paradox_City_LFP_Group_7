@@ -27,28 +27,32 @@ public class Apple : MonoBehaviour
     void Awake()
     {
         _rb = this.GetOrAddComponent<Rigidbody>();
-        _rb.useGravity = true;
+        _rb.useGravity = false;
     }
 
     void OnEnable() => registry.Register(this);
     void OnDisable() => registry.Deregister(this);
     
-    void OnCollisionEnter(Collision collision)
-    {
-        if (isGrounded) return; // guard against double-fire
-        if (((1 << collision.gameObject.layer) & groundMask) == 0) return;
-
-        isGrounded = true;
-        OnAppleGrounded?.Invoke();
-        // play unmuffled noise / effect here, or let a listener do it
+    void Start()=> StartFalling();
 
 
+    // void OnCollisionEnter(Collision collision)
+    // {
+    //     if (isGrounded) return; // guard against double-fire
+    //     if (((1 << collision.gameObject.layer) & groundMask) == 0) return;
 
-        // Return to pool
-        AppleDeployManager.Instance.ReturnToPool(this);
-    }
+    //     isGrounded = true;
+    //     OnAppleGrounded?.Invoke();
+    //     // play unmuffled noise / effect here, or let a listener do it
+
+
+
+    //     // Return to pool
+    //     AppleDeployManager.Instance.ReturnToPool(this);
+    // }
 
     public void StartFalling(){
+        _rb.useGravity = true;
         OnAppleAirborne?.Invoke(transform);
         projector.Project(transform,_rb);
     }

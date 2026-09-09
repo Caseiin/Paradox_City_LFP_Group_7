@@ -20,6 +20,11 @@ public class AppleDeployManager : Singleton<AppleDeployManager>
     }
 
     public void ReturnToPool(Apple apple) => applePool.Release(apple);
+    public void DeployAt(Vector3 position){
+        var apple = applePool.Get();
+        apple.transform.position = position;
+        apple.StartFalling();
+    }
     
 
 }
