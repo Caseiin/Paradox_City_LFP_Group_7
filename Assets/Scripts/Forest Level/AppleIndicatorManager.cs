@@ -1,0 +1,52 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UIElements;
+using BetterPooling;
+using BetterSingletons;
+// Owns the shared anchor + pool. This is what the rest of your game talks to.
+public class AppleIndicatorManager : Singleton<AppleIndicatorManager>
+{
+    [SerializeField] VisualTreeAsset arrowTemplate;
+    [SerializeField] UIDocument uiDocument;
+    [SerializeField] Camera cam;
+    [SerializeField] float angleThreshold = 0.5f;
+
+    VisualElement anchor;
+    VisualElementPool<TemplateContainer> pool;
+    readonly Dictionary<Transform, AppleDirectionIndicator> active = new();
+
+    protected override void Awake()
+    {
+        base.Awake();
+        anchor = uiDocument.rootVisualElement.Q<VisualElement>("applenotifier-element-archor");
+
+        pool = new VisualElementPool<TemplateContainer>(
+            createFunc: () => arrowTemplate.CloneTree(),
+            container: anchor
+        );
+    }
+
+    public void Register(Transform target)
+    {
+        if (active.ContainsKey(target)) return;
+
+        var element = pool.Get();
+        var indicator = new AppleDirectionIndicator(element, cam, angleThreshold);
+        indicator.SetTarget(target);
+        active[target] = indicator;
+    }
+
+    public void Unregister(Transform target)
+    {
+        if (!active.TryGetValue(target, out var indicator)) return;
+
+        pool.Release((TemplateContainer)indicator.Element);
+        active.Remove(target);
+    }
+
+    void LateUpdate()
+    {
+        foreach (var indicator in active.Values)
+            indicator.Tick();
+    }
+}
