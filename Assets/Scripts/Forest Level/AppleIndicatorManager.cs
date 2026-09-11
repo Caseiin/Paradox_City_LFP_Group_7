@@ -6,10 +6,15 @@ using BetterSingletons;
 // Owns the shared anchor + pool. This is what the rest of your game talks to.
 public class AppleIndicatorManager : Singleton<AppleIndicatorManager>
 {
-    [SerializeField] VisualTreeAsset arrowTemplate;
-    [SerializeField] UIDocument uiDocument;
-    [SerializeField] Camera cam;
-    [SerializeField] float angleThreshold = 0.5f;
+#region fields
+        [SerializeField] VisualTreeAsset arrowTemplate;
+        [SerializeField] UIDocument uiDocument;
+        [SerializeField] Camera cam;
+        [SerializeField] float angleThreshold = 0.5f;
+        [SerializeField] float clusterThreshold = 15f;   // degrees
+        [SerializeField] float angularStep = 20f;        // degrees
+        [SerializeField] float radius = 150f;            // pixels
+#endregion
 
     VisualElement anchor;
     VisualElementPool<TemplateContainer> pool;
@@ -46,7 +51,16 @@ public class AppleIndicatorManager : Singleton<AppleIndicatorManager>
 
     void LateUpdate()
     {
+        var visible = new List<(AppleDirectionIndicator, float)>();
         foreach (var indicator in active.Values)
-            indicator.Tick();
+        {
+            var angle = indicator.ComputeRawAngle();
+            if (angle.HasValue) visible.Add((indicator, angle.Value));
+            else indicator.Hide();
+        }
+
+        var resolved = IndicatorLayoutSolver.Resolve(visible, clusterThreshold, angularStep);
+        foreach (var (indicator, finalAngle) in resolved)
+            indicator.ApplyFinalAngle(finalAngle, radius);
     }
 }

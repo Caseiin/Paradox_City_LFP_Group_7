@@ -35,6 +35,8 @@ public class AppleDirectionIndicator
         element.RegisterCallback<GeometryChangedEvent>(OnFirstLayout);
     }
 
+
+    //TODO: Ignore the y axis change but use x-z axis
     void OnFirstLayout(GeometryChangedEvent evt)
     {
         element.style.marginLeft = -element.resolvedStyle.width / 2f;
@@ -44,26 +46,34 @@ public class AppleDirectionIndicator
 
     public void SetTarget(Transform target) => Target = target;
 
-    public void Tick()
+    public float? ComputeRawAngle()
     {
-        if (Target == null) return;
+        if (Target == null) return null;
 
         Vector3 toTarget = Target.position - cam.transform.position;
-        Vector3 targetDir = toTarget.normalized;
-        float dot = Vector3.Dot(targetDir, cam.transform.forward);
 
-        if (dot > angleThreshold)
-        {
-            element.style.display = DisplayStyle.None;
-            return;
-        }
-
-        element.style.display = DisplayStyle.Flex;
+        // yaw-only visibility check (your y-axis fix)
+        Vector3 flatToTarget = new Vector3(toTarget.x, 0, toTarget.z).normalized;
+        Vector3 flatForward = new Vector3(cam.transform.forward.x, 0, cam.transform.forward.z).normalized;
+        if (Vector3.Dot(flatToTarget, flatForward) > angleThreshold) return null;
 
         float x = Vector3.Dot(toTarget, cam.transform.right);
         float y = Vector3.Dot(toTarget, cam.transform.up);
         float angleDeg = Mathf.Atan2(y, x) * Mathf.Rad2Deg;
+        return (angleDeg + 360f) % 360f; // normalize to [0,360)
+    }
 
+    public void Hide() => element.style.display = DisplayStyle.None;
+
+    public void ApplyFinalAngle(float angleDeg, float radius)
+    {
+        element.style.display = DisplayStyle.Flex;
+
+        float rad = angleDeg * Mathf.Deg2Rad;
+        float x = Mathf.Cos(rad) * radius;
+        float y = -Mathf.Sin(rad) * radius; // sign may need flipping — see note below
+
+        element.style.translate = new StyleTranslate(new Translate(x, y));
         element.style.rotate = new StyleRotate(new Rotate(new Angle(angleDeg, AngleUnit.Degree)));
     }
 }
