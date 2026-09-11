@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -75,5 +76,10 @@ public class AppleDirectionIndicator
 
         element.style.translate = new StyleTranslate(new Translate(x, y));
         element.style.rotate = new StyleRotate(new Rotate(new Angle(angleDeg, AngleUnit.Degree)));
+    }
+
+    internal void ApplyFinalAngle(float finalAngle, object radius)
+    {
+        throw new NotImplementedException();
     }
 }

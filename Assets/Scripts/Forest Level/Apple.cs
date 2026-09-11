@@ -17,6 +17,7 @@ public class Apple : MonoBehaviour
     [SerializeField] AppleTrajectoryProjector projector;
     public LayerMask groundMask;
     bool isGrounded;
+    bool isAirborne;
 
 
     public static event Action<Transform> OnAppleAirborne;
@@ -27,7 +28,7 @@ public class Apple : MonoBehaviour
     void Awake()
     {
         _rb = this.GetOrAddComponent<Rigidbody>();
-        _rb.useGravity = false;
+        _rb.useGravity = true;
     }
 
     void OnEnable() => registry.Register(this);
@@ -51,10 +52,19 @@ public class Apple : MonoBehaviour
     //     AppleDeployManager.Instance.ReturnToPool(this);
     // }
 
+
     public void StartFalling(){
         _rb.useGravity = true;
+        isAirborne = true;
         OnAppleAirborne?.Invoke(transform);
-        projector.Project(transform,_rb);
+    }
+
+    
+
+    void FixedUpdate(){
+        if (isAirborne){
+            projector.Project(transform, _rb, groundMask);
+        }
     }
 
 
