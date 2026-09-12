@@ -1,3 +1,4 @@
+// PlayerMovement.cs
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -7,11 +8,7 @@ namespace Forestlevel
     public class PlayerMovement : MonoBehaviour
     {
         [Header("References")]
-        // The active render camera, NOT a specific vcam — Cinemachine blends
-        // multiple vcams into Camera.main, so reading from the vcam directly
-        // would miss blends/cuts. This is what makes movement "camera-relative"
-        // regardless of which vcam is currently live.
-        [SerializeField] Transform cameraTransform;
+        [SerializeField] Transform cameraTransform; // used only while free-look (unlocked)
 
         [Header("Movement")]
         public float moveSpeed = 6f;
@@ -21,9 +18,6 @@ namespace Forestlevel
         public float airFriction = 0.5f;
 
         [Header("Rotation")]
-        // Fall Guys' character turns to face movement, independent of camera
-        // facing. Degrees/sec, not a 0-1 lerp — keeps turn speed consistent
-        // regardless of framerate or how close the angle already is.
         public float turnSpeed = 720f;
 
         [Header("Slope / Slide")]
@@ -31,8 +25,8 @@ namespace Forestlevel
         public float slideGravity = 12f;
 
         [Header("Slide (damping-based)")]
-        public float slideImpulse = 8f;       // forward push applied once, on slide start
-        public float slideLinearDamping = 4f; // Rigidbody drag while sliding
+        public float slideImpulse = 8f;
+        public float slideLinearDamping = 4f;
         public float slideAngularDamping = 8f;
         float defaultLinearDamping;
         float defaultAngularDamping;
@@ -41,6 +35,16 @@ namespace Forestlevel
         [Header("Ground Check")]
         public float groundCheckDistance = 0.3f;
         public LayerMask groundMask;
+
+        [Header("Camera Lock State")]
+        [SerializeField] float lockEnterSpeed = 0.15f;
+        [SerializeField] float lockExitSpeed = 0.05f;
+        public bool IsLocked { get; private set; }
+
+        // Frozen heading captured the instant movement begins. wishDir is
+        // built relative to THIS, never to the player's own live rotation —
+        // that's what stops the target from chasing itself as the player turns.
+        Quaternion lockedBasis = Quaternion.identity;
 
         Rigidbody _rb;
         public Rigidbody Rb => _rb;
@@ -58,8 +62,8 @@ namespace Forestlevel
         {
             _rb = GetComponent<Rigidbody>();
             _col = GetComponent<CapsuleCollider>();
-            _rb.freezeRotation = true; // we rotate the transform manually, not via physics torque
-            _rb.useGravity = false;    // gravity is handled manually in HandleMomentum
+            _rb.freezeRotation = true;
+            _rb.useGravity = false;
 
             defaultLinearDamping = _rb.linearDamping;
             defaultAngularDamping = _rb.angularDamping;
@@ -77,9 +81,6 @@ namespace Forestlevel
             controls.Player.Move.canceled += OnMove;
             controls.Player.Sprint.performed += OnSprint;
             controls.Player.Sprint.canceled += OnSprint;
-            // Wire a Slide action the same way once it exists in the asset:
-            // controls.Player.Slide.performed += _ => StartSlide();
-            // controls.Player.Slide.canceled += _ => StopSlide();
         }
 
         void OnDisable()
@@ -96,13 +97,38 @@ namespace Forestlevel
 
         void FixedUpdate()
         {
+            UpdateLockState();
             CheckGround();
             HandleMomentum();
             HandleFacing();
             _rb.linearVelocity = momentum;
         }
 
-        // ---------- GROUND CHECK ----------
+        void UpdateLockState()
+        {
+            float speedSqr = _rb.linearVelocity.sqrMagnitude;
+            bool wasLocked = IsLocked;
+
+            if (!IsLocked && speedSqr > lockEnterSpeed * lockEnterSpeed) IsLocked = true;
+            else if (IsLocked && speedSqr < lockExitSpeed * lockExitSpeed) IsLocked = false;
+
+            if (IsLocked && !wasLocked)
+            {
+                // Just started moving — freeze whichever way we're currently
+                // looking as the movement reference for this run. Captured
+                // ONCE per lock-in, never recomputed from the player's own
+                // rotation afterward.
+                Vector3 flatForward = cameraTransform != null
+                    ? Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up)
+                    : transform.forward;
+
+                if (flatForward.sqrMagnitude < 0.0001f)
+                    flatForward = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+
+                lockedBasis = Quaternion.LookRotation(flatForward.normalized, Vector3.up);
+            }
+        }
+
         void CheckGround()
         {
             float radius = _col.radius * 0.9f;
@@ -118,27 +144,31 @@ namespace Forestlevel
 
         bool IsTooSteep() => isGrounded && Vector3.Angle(groundNormal, Vector3.up) > slopeLimit;
 
-        // ---------- CAMERA-RELATIVE MOVE DIRECTION ----------
         Vector3 GetMoveDirection()
         {
-            if (cameraTransform == null) return Vector3.zero;
+            Vector3 forward, right;
 
-            // Flatten camera forward/right onto the ground plane so pitching
-            // the camera up/down (looking at the sky) doesn't slow horizontal
-            // movement or add unwanted vertical velocity.
-            Vector3 forward = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
-            Vector3 right = Vector3.ProjectOnPlane(cameraTransform.right, Vector3.up).normalized;
+            if (IsLocked)
+            {
+                // Fixed, external reference — does NOT rotate as the player
+                // turns to face wishDir. This is what lets RotateTowards
+                // actually converge instead of chasing a moving target.
+                forward = lockedBasis * Vector3.forward;
+                right = lockedBasis * Vector3.right;
+            }
+            else
+            {
+                if (cameraTransform == null) return Vector3.zero;
+                forward = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
+                right = Vector3.ProjectOnPlane(cameraTransform.right, Vector3.up).normalized;
+            }
 
             Vector3 dir = forward * moveInput.y + right * moveInput.x;
             return dir.magnitude > 1f ? dir.normalized : dir;
         }
 
-        // ---------- FACING (independent of camera) ----------
         void HandleFacing()
         {
-            // Only turn when there's actual movement intent and enough speed
-            // to matter — this avoids the character twitching to face tiny
-            // residual momentum as it comes to a stop.
             Vector3 flatVelocity = Vector3.ProjectOnPlane(momentum, Vector3.up);
             if (flatVelocity.sqrMagnitude < 0.01f) return;
 
@@ -147,7 +177,6 @@ namespace Forestlevel
             _rb.MoveRotation(newRot);
         }
 
-        // ---------- MOMENTUM ----------
         void HandleMomentum()
         {
             Vector3 vertical = Vector3.Project(momentum, Vector3.up);
@@ -165,9 +194,6 @@ namespace Forestlevel
             }
             else if (!isSliding)
             {
-                // Sliding is driven entirely by damping + the initial impulse
-                // (see StartSlide), so normal move-acceleration is skipped
-                // while sliding — otherwise input would just cancel the slide.
                 Vector3 wishDir = GetMoveDirection();
                 float speed = moveSpeed * (sprintHeld ? 1.6f : 1f);
                 Vector3 targetVel = wishDir * speed;
@@ -182,7 +208,6 @@ namespace Forestlevel
             momentum = horizontal + vertical;
         }
 
-        // ---------- SLIDE ----------
         public void StartSlide()
         {
             if (isSliding || !isGrounded) return;
@@ -191,9 +216,6 @@ namespace Forestlevel
             _rb.linearDamping = slideLinearDamping;
             _rb.angularDamping = slideAngularDamping;
 
-            // One-off push in the current facing direction. Damping then
-            // bleeds this off naturally over time instead of you having to
-            // author a deceleration curve by hand.
             momentum += transform.forward * slideImpulse;
         }
 

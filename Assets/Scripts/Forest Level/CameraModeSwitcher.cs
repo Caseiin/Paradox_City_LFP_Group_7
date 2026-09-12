@@ -1,19 +1,22 @@
-using Forestlevel;
+// CameraRig.cs (renamed from CameraModeSwitcher — it no longer computes any
+// state of its own; it's purely a consumer of PlayerMovement.IsLocked)
 using UnityEngine;
 using Cinemachine;
 
-public class CameraModeSwitcher : MonoBehaviour
+namespace Forestlevel
 {
-    [SerializeField] CinemachineFreeLook  freeLookCam;
-    [SerializeField] CinemachineVirtualCamera lockedFollowCam;
-    [SerializeField] PlayerMovement playerMovement; // whatever exposes current move input/velocity
-    [SerializeField] float moveThreshold = 0.1f;
-
-    void Update()
+    public class CameraRig : MonoBehaviour
     {
-        bool isMoving = playerMovement.Rb.linearVelocity.sqrMagnitude > moveThreshold * moveThreshold;
+        [SerializeField] CinemachineFreeLook freeLookCam;
+        [SerializeField] CinemachineVirtualCamera lockedFollowCam;
+        [SerializeField] PlayerMovement playerMovement;
 
-        freeLookCam.Priority = isMoving ? 0 : 10;
-        lockedFollowCam.Priority = isMoving ? 10 : 0;
+        void Update()
+        {
+            bool locked = playerMovement.IsLocked;
+
+            freeLookCam.Priority = locked ? 0 : 10;
+            lockedFollowCam.Priority = locked ? 10 : 0;
+        }
     }
 }

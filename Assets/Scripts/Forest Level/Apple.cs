@@ -21,7 +21,7 @@ public class Apple : MonoBehaviour
 
 
     public static event Action<Transform> OnAppleAirborne;
-    public static event Action OnAppleGrounded;
+    public event Action OnAppleGrounded;
 
     Rigidbody _rb;
 
@@ -31,26 +31,32 @@ public class Apple : MonoBehaviour
         _rb.useGravity = true;
     }
 
-    void OnEnable() => registry.Register(this);
-    void OnDisable() => registry.Deregister(this);
+    void OnEnable(){
+        registry.Register(this);
+        OnAppleGrounded += WakeManager.Instance.InterruptSleep;
+    }
+    void OnDisable(){
+        registry.Deregister(this);
+        OnAppleGrounded -= WakeManager.Instance.InterruptSleep;
+    }
     
     void Start()=> StartFalling();
 
 
-    // void OnCollisionEnter(Collision collision)
-    // {
-    //     if (isGrounded) return; // guard against double-fire
-    //     if (((1 << collision.gameObject.layer) & groundMask) == 0) return;
+    void OnCollisionEnter(Collision collision)
+    {
+        if (isGrounded) return; // guard against double-fire
+        if (((1 << collision.gameObject.layer) & groundMask) == 0) return;
 
-    //     isGrounded = true;
-    //     OnAppleGrounded?.Invoke();
-    //     // play unmuffled noise / effect here, or let a listener do it
+        isGrounded = true;
+        OnAppleGrounded?.Invoke();
+        // play unmuffled noise / effect here, or let a listener do it
 
+        
 
-
-    //     // Return to pool
-    //     AppleDeployManager.Instance.ReturnToPool(this);
-    // }
+        // Return to pool
+        AppleDeployManager.Instance.ReturnToPool(this);
+    }
 
 
     public void StartFalling(){
