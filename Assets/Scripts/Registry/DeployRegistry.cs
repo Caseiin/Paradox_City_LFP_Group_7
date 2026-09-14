@@ -5,6 +5,7 @@ using System.Collections.Generic;
 [CreateAssetMenu(fileName = "DeployRegistry", menuName = "Registries/Deploy Registry")]
 public class DeployRegistry : Registry<AppleDeployer>
 {
+    public int DeployCount => _items.Count;
     public int BusyCount
     {
         get
@@ -23,7 +24,7 @@ public class DeployRegistry : Registry<AppleDeployer>
         foreach(var item in _items)
         {
             if(item.IsBusy)
-                yield return item;
+                yield return item; //! expected Deploy issue 
         }
     }
 }

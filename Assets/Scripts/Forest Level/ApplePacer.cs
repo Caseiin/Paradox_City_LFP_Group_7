@@ -24,17 +24,27 @@ public class ApplePacer
         deployer = null;
         timeSinceLastSpawn += deltaTime;
 
-        if (timeSinceLastSpawn < minSpawnInterval) return false;
-        if (registry.BusyCount >= maxConcurrent) return false;
+        if (timeSinceLastSpawn < minSpawnInterval) return false; // expected, ignore for now
 
+        if (registry.BusyCount >= maxConcurrent)
+        {
+            Debug.Log($"Pacer blocked: busy count {registry.BusyCount} >= cap {maxConcurrent}");
+            return false;
+        }
+
+        bool anyCandidates = false;
         foreach (var candidate in registry.GetAllFree())
         {
+            anyCandidates = true;
             if (HasBusyConflict(candidate)) continue;
 
             deployer = candidate;
             timeSinceLastSpawn = 0f;
             return true;
         }
+
+        if (!anyCandidates)
+            Debug.Log($"Pacer blocked: registry.GetAllFree() returned nothing,  Busy Deploy Count:{registry.BusyCount}/{registry.DeployCount} — no deployers registered?");
 
         return false;
     }
