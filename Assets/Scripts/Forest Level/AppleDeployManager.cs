@@ -68,6 +68,7 @@ public class AppleDeployManager : Singleton<AppleDeployManager>,
             DeployAt(deployer);
         };
 
+        countdown.Start();
         activeCountdowns[deployer] = countdown;
     }
 
@@ -83,6 +84,7 @@ public class AppleDeployManager : Singleton<AppleDeployManager>,
     void DeployAt(AppleDeployer deployer)
     {
         var apple = applePool.Get();
+        Debug.Log($"Apple deployed at {deployer.transform.position.ToString().WithBold().WithColour(Color.coral)}");
         apple.transform.position = deployer.transform.position;
         apple.StartFalling(deployer);
     }

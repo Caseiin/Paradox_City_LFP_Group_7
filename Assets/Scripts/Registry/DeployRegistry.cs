@@ -23,7 +23,7 @@ public class DeployRegistry : Registry<AppleDeployer>
     public IEnumerable<AppleDeployer> GetAllFree(){
         foreach(var item in _items)
         {
-            if(item.IsBusy)
+            if(!item.IsBusy)
                 yield return item; //! expected Deploy issue 
         }
     }
