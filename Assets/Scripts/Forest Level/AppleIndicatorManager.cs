@@ -3,8 +3,12 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using BetterPooling;
 using BetterSingletons;
+using BetterEventBus;
 // Owns the shared anchor + pool. This is what the rest of your game talks to.
-public class AppleIndicatorManager : Singleton<AppleIndicatorManager>
+public class AppleIndicatorManager : Singleton<AppleIndicatorManager>,
+    IGamePlayEventListener<AppleAirborneEvent>,
+    IGamePlayEventListener<AppleDroppedEvent>,
+    IGamePlayEventListener<AppleCollectedEvent>
 {
 #region fields
         [SerializeField] VisualTreeAsset arrowTemplate;
@@ -30,6 +34,24 @@ public class AppleIndicatorManager : Singleton<AppleIndicatorManager>
             container: anchor
         );
     }
+
+        void OnEnable()
+    {
+        GameEventBus.Register<AppleAirborneEvent>(this);
+        GameEventBus.Register<AppleDroppedEvent>(this);
+        GameEventBus.Register<AppleCollectedEvent>(this);
+    }
+
+    void OnDisable()
+    {
+        GameEventBus.Unregister<AppleAirborneEvent>(this);
+        GameEventBus.Unregister<AppleDroppedEvent>(this);
+        GameEventBus.Unregister<AppleCollectedEvent>(this);
+    }
+
+    public void OnGamePlayEvent(AppleAirborneEvent e) => Register(e.Apple.transform);
+    public void OnGamePlayEvent(AppleDroppedEvent e) => Unregister(e.Apple.transform);
+    public void OnGamePlayEvent(AppleCollectedEvent e) => Unregister(e.Apple.transform);
 
     public void Register(Transform target)
     {

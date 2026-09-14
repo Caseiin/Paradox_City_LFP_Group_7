@@ -1,77 +1,64 @@
 using System;
 using UnityEngine;
-using GameDevExtensionMethods;
-using Unity.VisualScripting;
-/// <summary>
-/// Apples that need to be caught by player
-/// Registers itself Checked
-/// Calculate a vague fall distance and project communication to player
-/// Make a unmuffled noise and effect when reaches ground
-/// Notify Isaac Newton(Listener)
-/// </summary>
+using BetterEventBus;
 
-
+[RequireComponent(typeof(Rigidbody))]
 public class Apple : MonoBehaviour
 {
     [SerializeField] AppleRegistry registry;
     [SerializeField] AppleTrajectoryProjector projector;
     public LayerMask groundMask;
-    bool isGrounded;
+    public LayerMask playerMask;
+
+    bool resolved;    // one flag guarding both outcomes, not just ground
     bool isAirborne;
-
-
-    public static event Action<Transform> OnAppleAirborne;
-    public event Action OnAppleGrounded;
-
+    AppleDeployer sourceDeployer;
     Rigidbody _rb;
 
     void Awake()
     {
-        _rb = this.GetOrAddComponent<Rigidbody>();
+        _rb = GetComponent<Rigidbody>();
         _rb.useGravity = true;
     }
 
-    void OnEnable(){
-        registry.Register(this);
-        OnAppleGrounded += WakeManager.Instance.InterruptSleep;
-    }
-    void OnDisable(){
-        registry.Deregister(this);
-        OnAppleGrounded -= WakeManager.Instance.InterruptSleep;
-    }
-    
-    void Start()=> StartFalling();
-
+    void OnEnable() => registry.Register(this);
+    void OnDisable() => registry.Deregister(this);
 
     void OnCollisionEnter(Collision collision)
     {
-        if (isGrounded) return; // guard against double-fire
-        if (((1 << collision.gameObject.layer) & groundMask) == 0) return;
+        if (resolved) return;
 
-        isGrounded = true;
-        OnAppleGrounded?.Invoke();
-        // play unmuffled noise / effect here, or let a listener do it
+        int layer = collision.gameObject.layer;
 
-        
-
-        // Return to pool
-        AppleDeployManager.Instance.ReturnToPool(this);
+        if (((1 << layer) & playerMask) != 0) { Resolve(caught: true); return; }
+        if (((1 << layer) & groundMask) != 0) { Resolve(caught: false); }
     }
 
+    void Resolve(bool caught)
+    {
+        resolved = true;
+        isAirborne = false;
 
-    public void StartFalling(){
+        if (caught) GameEventBus.Raise(new AppleCollectedEvent(this));
+        else GameEventBus.Raise(new AppleDroppedEvent(this));
+
+        sourceDeployer?.MarkFree();
+        projector.Hide();   
+        AppleDeployManager.Instance.ReturnToPool(this);
+
+    }
+
+    public void StartFalling(AppleDeployer deployer = null)
+    {
+        sourceDeployer = deployer;
+        resolved = false;
         _rb.useGravity = true;
         isAirborne = true;
-        OnAppleAirborne?.Invoke(transform);
+        GameEventBus.Raise(new AppleAirborneEvent(this));
     }
 
-    
-
-    void FixedUpdate(){
-        if (isAirborne){
-            projector.Project(transform, _rb, groundMask);
-        }
+    void FixedUpdate()
+    {
+        if (isAirborne) projector.Project(transform, _rb, groundMask);
     }
-
-
 }

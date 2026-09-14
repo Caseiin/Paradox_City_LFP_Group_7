@@ -1,8 +1,10 @@
 using UnityEngine;
 using UnityEngine.UIElements;
+using System;
 
 public class WakemeterUI
 {
+    public event Action OnMeterFull;
     readonly ProgressBar progress;
     readonly int disturbAmount;
     readonly float lerpSpeed;
@@ -24,11 +26,14 @@ public class WakemeterUI
     {
         targetValue = Mathf.Min(targetValue + disturbAmount, progress.highValue);
 
-        scheduledItem?.Pause(); // don't stack a second ticking animation on top
+        scheduledItem?.Pause();
         scheduledItem = progress.schedule
             .Execute(AnimateStep)
             .Every(16)
             .Until(() => Mathf.Approximately(progress.value, targetValue));
+
+        if (targetValue >= progress.highValue)
+            OnMeterFull?.Invoke();
     }
 
     void AnimateStep()

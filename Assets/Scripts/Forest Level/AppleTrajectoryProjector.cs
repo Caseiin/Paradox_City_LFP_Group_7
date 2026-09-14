@@ -105,7 +105,7 @@ public class AppleTrajectoryProjector : MonoBehaviour
         }
     }
 
-    void Hide()
+    public void Hide()
     {
         groundMarker.SetActive(false);
         lineRenderer.positionCount = 0;
