@@ -36,8 +36,8 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  alertColour: {r: 0.9547169, g: 0.3920072, b: 0.019814858, a: 0}
-  baseColour: {r: 1, g: 1, b: 1, a: 0}
+  alertColour: {r: 0.9547169, g: 0.3920072, b: 0.019814858, a: 0.39215687}
+  baseColour: {r: 1, g: 1, b: 1, a: 0.39215687}
   minScale: {x: 1, y: 1, z: 1}
   maxScale: {x: 1.6, y: 1.6, z: 1.6}
   pulseDuration: 0.35
