@@ -36,11 +36,11 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  alertColour: {r: 0.8867924, g: 0.55653656, b: 0.09202553, a: 1}
-  baseColour: {r: 0.96981126, g: 0.9570024, b: 0.9570024, a: 1}
+  alertColour: {r: 0.93962264, g: 0.45264736, b: 0.14005686, a: 1}
+  baseColour: {r: 0.94716984, g: 0.92751163, b: 0.92751163, a: 1}
   minScale: {x: 1, y: 1, z: 1}
   maxScale: {x: 1.6, y: 1.6, z: 1.6}
-  pulseDuration: 0.345
+  pulseDuration: 0.35
   shakeMagnitude: 8.5
   leftAnchorPercent: 20
   rightAnchorPercent: 80
