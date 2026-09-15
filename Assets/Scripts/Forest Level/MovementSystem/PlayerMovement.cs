@@ -1,4 +1,3 @@
-// PlayerMovement.cs
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -8,7 +7,8 @@ namespace Forestlevel
     public class PlayerMovement : MonoBehaviour
     {
         [Header("References")]
-        [SerializeField] Transform cameraTransform; // used only while free-look (unlocked)
+        [SerializeField] Transform cameraTransform; // read by strategies for camera-relative direction
+        public Transform CameraTransform => cameraTransform;
 
         [Header("Movement")]
         public float moveSpeed = 6f;
@@ -20,31 +20,13 @@ namespace Forestlevel
         [Header("Rotation")]
         public float turnSpeed = 720f;
 
-        [Header("Slope / Slide")]
+        [Header("Slope")]
         public float slopeLimit = 45f;
-        public float slideGravity = 12f;
-
-        [Header("Slide (damping-based)")]
-        public float slideImpulse = 8f;
-        public float slideLinearDamping = 4f;
-        public float slideAngularDamping = 8f;
-        float defaultLinearDamping;
-        float defaultAngularDamping;
-        bool isSliding;
+        public float slideGravity = 12f; // steep-slope slide-down rate, not the removed dash-slide ability
 
         [Header("Ground Check")]
         public float groundCheckDistance = 0.3f;
         public LayerMask groundMask;
-
-        [Header("Camera Lock State")]
-        [SerializeField] float lockEnterSpeed = 0.15f;
-        [SerializeField] float lockExitSpeed = 0.05f;
-        public bool IsLocked { get; private set; }
-
-        // Frozen heading captured the instant movement begins. wishDir is
-        // built relative to THIS, never to the player's own live rotation —
-        // that's what stops the target from chasing itself as the player turns.
-        Quaternion lockedBasis = Quaternion.identity;
 
         Rigidbody _rb;
         public Rigidbody Rb => _rb;
@@ -58,6 +40,9 @@ namespace Forestlevel
         Vector2 moveInput;
         bool sprintHeld;
 
+        IMovementStrategy currentStrategy;
+        public IMovementStrategy CurrentStrategy => currentStrategy;
+
         void Awake()
         {
             _rb = GetComponent<Rigidbody>();
@@ -65,13 +50,12 @@ namespace Forestlevel
             _rb.freezeRotation = true;
             _rb.useGravity = false;
 
-            defaultLinearDamping = _rb.linearDamping;
-            defaultAngularDamping = _rb.angularDamping;
-
             controls = new DefaultInputSystem();
 
             if (cameraTransform == null && Camera.main != null)
                 cameraTransform = Camera.main.transform;
+
+            SetStrategy(new TraversalMovement());
         }
 
         void OnEnable()
@@ -95,38 +79,20 @@ namespace Forestlevel
         void OnMove(InputAction.CallbackContext ctx) => moveInput = ctx.ReadValue<Vector2>();
         void OnSprint(InputAction.CallbackContext ctx) => sprintHeld = ctx.ReadValueAsButton();
 
+        public void SetStrategy(IMovementStrategy newStrategy)
+        {
+            if (newStrategy == null) return;
+            currentStrategy?.OnExit();
+            currentStrategy = newStrategy;
+            currentStrategy.OnEnter(this);
+        }
+
         void FixedUpdate()
         {
-            UpdateLockState();
             CheckGround();
             HandleMomentum();
             HandleFacing();
             _rb.linearVelocity = momentum;
-        }
-
-        void UpdateLockState()
-        {
-            float speedSqr = _rb.linearVelocity.sqrMagnitude;
-            bool wasLocked = IsLocked;
-
-            if (!IsLocked && speedSqr > lockEnterSpeed * lockEnterSpeed) IsLocked = true;
-            else if (IsLocked && speedSqr < lockExitSpeed * lockExitSpeed) IsLocked = false;
-
-            if (IsLocked && !wasLocked)
-            {
-                // Just started moving — freeze whichever way we're currently
-                // looking as the movement reference for this run. Captured
-                // ONCE per lock-in, never recomputed from the player's own
-                // rotation afterward.
-                Vector3 flatForward = cameraTransform != null
-                    ? Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up)
-                    : transform.forward;
-
-                if (flatForward.sqrMagnitude < 0.0001f)
-                    flatForward = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
-
-                lockedBasis = Quaternion.LookRotation(flatForward.normalized, Vector3.up);
-            }
         }
 
         void CheckGround()
@@ -143,29 +109,6 @@ namespace Forestlevel
         }
 
         bool IsTooSteep() => isGrounded && Vector3.Angle(groundNormal, Vector3.up) > slopeLimit;
-
-        Vector3 GetMoveDirection()
-        {
-            Vector3 forward, right;
-
-            if (IsLocked)
-            {
-                // Fixed, external reference — does NOT rotate as the player
-                // turns to face wishDir. This is what lets RotateTowards
-                // actually converge instead of chasing a moving target.
-                forward = lockedBasis * Vector3.forward;
-                right = lockedBasis * Vector3.right;
-            }
-            else
-            {
-                if (cameraTransform == null) return Vector3.zero;
-                forward = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
-                right = Vector3.ProjectOnPlane(cameraTransform.right, Vector3.up).normalized;
-            }
-
-            Vector3 dir = forward * moveInput.y + right * moveInput.x;
-            return dir.magnitude > 1f ? dir.normalized : dir;
-        }
 
         void HandleFacing()
         {
@@ -192,9 +135,14 @@ namespace Forestlevel
                 Vector3 slideDir = Vector3.ProjectOnPlane(Vector3.down, groundNormal).normalized;
                 horizontal += slideDir * (slideGravity * Time.deltaTime);
             }
-            else if (!isSliding)
+            else
             {
-                Vector3 wishDir = GetMoveDirection();
+                var ctx = new MovementContext(
+                    moveInput, sprintHeld, isGrounded, groundNormal, horizontal, Time.deltaTime);
+
+                Vector3 wishDir = currentStrategy != null ? currentStrategy.GetHorizontalTarget(ctx) : Vector3.zero;
+                if (wishDir.sqrMagnitude > 1f) wishDir.Normalize();
+
                 float speed = moveSpeed * (sprintHeld ? 1.6f : 1f);
                 Vector3 targetVel = wishDir * speed;
                 float rate = isGrounded ? acceleration : airControl;
@@ -206,26 +154,6 @@ namespace Forestlevel
             }
 
             momentum = horizontal + vertical;
-        }
-
-        public void StartSlide()
-        {
-            if (isSliding || !isGrounded) return;
-            isSliding = true;
-
-            _rb.linearDamping = slideLinearDamping;
-            _rb.angularDamping = slideAngularDamping;
-
-            momentum += transform.forward * slideImpulse;
-        }
-
-        public void StopSlide()
-        {
-            if (!isSliding) return;
-            isSliding = false;
-
-            _rb.linearDamping = defaultLinearDamping;
-            _rb.angularDamping = defaultAngularDamping;
         }
     }
 }

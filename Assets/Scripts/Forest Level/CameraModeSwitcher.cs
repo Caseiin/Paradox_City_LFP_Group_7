@@ -11,12 +11,12 @@ namespace Forestlevel
         [SerializeField] CinemachineVirtualCamera lockedFollowCam;
         [SerializeField] PlayerMovement playerMovement;
 
-        void Update()
-        {
-            bool locked = playerMovement.IsLocked;
+        // void Update()
+        // {
+        //     bool locked = playerMovement.IsLocked;
 
-            freeLookCam.Priority = locked ? 0 : 10;
-            lockedFollowCam.Priority = locked ? 10 : 0;
-        }
+        //     freeLookCam.Priority = locked ? 0 : 10;
+        //     lockedFollowCam.Priority = locked ? 10 : 0;
+        // }
     }
 }

@@ -18,7 +18,7 @@ public class AppleWarningCounterUI
     float _pulseElapsed;
     float _previousRemaining = -1f;
 
-    public AppleWarningCounterUI(Label counterLabel,AppleWarningCounterDataSO data)
+    public AppleWarningCounterUI(Label counterLabel, in AppleWarningCounterDataSO data)
     {
         _counter = counterLabel;
         this.data = data;
