@@ -4,5 +4,8 @@
     <ui:VisualElement name="applenotifier-element-archor" style="flex-grow: 0; flex-shrink: 0; width: 1724px; height: 816px; position: absolute; top: 143px; left: 111px;">
         <ui:Instance template="arrow-image" name="arrow-image" style="display: none;"/>
     </ui:VisualElement>
-    <ui:Label text="10" name="approachingApple-counter-label" style="-unity-font-style: bold; font-size: 40px; color: rgb(255, 255, 255);"/>
+    <ui:VisualElement name="approachingApple-counter-element" style="flex-grow: 0; flex-shrink: 0; height: 92px; width: 463px; flex-direction: row; background-color: rgba(0, 0, 0, 0.824); position: absolute; top: 40px; left: 1454px;">
+        <ui:Label text="Apple approaching in:" name="approachingApple-title-label" style="-unity-font-style: bold; font-size: 30px; color: rgb(255, 255, 255); -unity-text-align: middle-left;"/>
+        <ui:Label text="10" name="approachingApple-counter-label" style="-unity-font-style: bold; font-size: 40px; color: rgb(255, 255, 255); -unity-text-align: middle-right;"/>
+    </ui:VisualElement>
 </ui:UXML>

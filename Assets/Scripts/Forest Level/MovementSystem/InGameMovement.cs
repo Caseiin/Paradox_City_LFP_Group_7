@@ -1,4 +1,5 @@
 using UnityEngine;
+using BetterEventBus;
 
 namespace Forestlevel
 {
@@ -16,6 +17,7 @@ namespace Forestlevel
         public void OnEnter(PlayerMovement owner)
         {
             this.owner = owner;
+            GameEventBus.Raise<CameraChangeEvent>(new CameraChangeEvent(CameraType.InGame));
         }
 
         public void OnExit()

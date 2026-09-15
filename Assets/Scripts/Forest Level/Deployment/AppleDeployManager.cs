@@ -22,7 +22,7 @@ public class AppleDeployManager : Singleton<AppleDeployManager>,
 
     [Header("Warning UI")]
     [SerializeField] UIDocument document;
-    [SerializeField] AppleWarningCounterDataSO warningDataSo;
+    [SerializeField] AppleWarningCounterDataSO Data;
     [SerializeField] Transform player;
     [SerializeField] Camera cam;
     AppleWarningCounterUI warningCounterUI;
@@ -40,7 +40,7 @@ public class AppleDeployManager : Singleton<AppleDeployManager>,
         applePool = new SingleObjectPool<Apple>(prefab: ApplePrefab, defaultCapacity: defaultCapacity, maxSize: maxSize);
         pacer = new ApplePacer(deployerRegistry, conflictPairs, maxConcurrent, minSpawnInterval);
         var warningCounterLabel = document.rootVisualElement.Q<Label>("approachingApple-counter-label");
-        warningCounterUI = new AppleWarningCounterUI(warningCounterLabel,warningDataSo);
+        warningCounterUI = new AppleWarningCounterUI(warningCounterLabel,Data);
     }
 
     void OnEnable()
@@ -115,18 +115,15 @@ public class AppleDeployManager : Singleton<AppleDeployManager>,
             }
         }
 
-        if (soonest == null) { warningCounterUI.Hide(); return; }
+        if (soonest == null) { 
+            warningCounterUI.Hide(); 
+            return; 
+        }
 
-        float bias = ComputeHorizontalBias(soonest.transform.position, player, cam);
-        warningCounterUI.UpdateDisplay(soonestTimer.CurrentTime, bias);
+
+        warningCounterUI.UpdateDisplay(soonestTimer.CurrentTime);
     }
 
-    float ComputeHorizontalBias(Vector3 deployerPos, Transform player, Camera cam)
-    {
-        Vector3 toDeployer = deployerPos - player.position;
-        toDeployer.y = 0f;
-        return Vector3.Dot(toDeployer.normalized, cam.transform.right); // -1 (left) .. 1 (right)
-    }
 
     public void OnGamePlayEvent(LevelWonEvent gameplayEvent) => deploymentHalted = true;
     public void OnGamePlayEvent(LevelLostEvent gameplayEvent) => deploymentHalted = true;

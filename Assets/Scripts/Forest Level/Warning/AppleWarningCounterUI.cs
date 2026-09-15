@@ -22,10 +22,10 @@ public class AppleWarningCounterUI
     {
         _counter = counterLabel;
         this.data = data;
-        _counter.style.position = Position.Absolute;
+        // _counter.style.position = Position.Absolute;
     }
 
-    public void UpdateDisplay(float remaining, float horizontalBias)
+    public void UpdateDisplay(float remaining)
     {
         _counter.style.display = DisplayStyle.Flex;
         // Debug.Log("Warning Counter ON!");
@@ -35,7 +35,7 @@ public class AppleWarningCounterUI
         {
             _lastShownInt = currentInt;
             _counter.text = currentInt > 0 ? currentInt.ToString() : "";
-            Debug.Log($"Counter value:{currentInt.ToString().WithBold()}");
+            // Debug.Log($"Counter value:{currentInt.ToString().WithBold()}");
             _pulseElapsed = 0f; // crossing into a new integer restarts the pop
         }
 
@@ -53,24 +53,7 @@ public class AppleWarningCounterUI
         float shake = Mathf.Lerp(data.shakeMagnitude, 0f, curveT);
         Vector2 jitter = Random.insideUnitCircle * shake;
         _counter.style.translate = new StyleTranslate(new Translate(jitter.x, jitter.y));
-
-        float horizontalPercent = Mathf.Lerp(data.leftAnchorPercent, data.rightAnchorPercent, (horizontalBias + 1f) * 0.5f);
-        _counter.style.left = new StyleLength(Length.Percent(horizontalPercent));
     }
 
     public void Hide() => _counter.style.display = DisplayStyle.None;
-}
-
-[CreateAssetMenu(fileName ="AppleWarningData", menuName ="UIData/AppleWarningCounter")]
-public class AppleWarningCounterDataSO: ScriptableObject
-{
-    public AnimationCurve popUpCurve;
-    public Color alertColour;
-    public Color baseColour;
-    public Vector3 minScale;
-    public Vector3 maxScale;
-    public float pulseDuration;
-    public float shakeMagnitude;
-    public float leftAnchorPercent = 20f;
-    public float rightAnchorPercent = 80f;
 }

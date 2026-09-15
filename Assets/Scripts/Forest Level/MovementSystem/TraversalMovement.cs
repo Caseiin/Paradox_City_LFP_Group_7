@@ -1,3 +1,4 @@
+using BetterEventBus;
 using UnityEngine;
 
 namespace Forestlevel
@@ -22,6 +23,7 @@ namespace Forestlevel
         {
             this.owner = owner;
             IsLocked = false; // re-entering traversal never inherits a stale lock
+            GameEventBus.Raise<CameraChangeEvent>(new CameraChangeEvent(CameraType.FreeLook));
         }
 
         public void OnExit()

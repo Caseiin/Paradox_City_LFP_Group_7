@@ -55,7 +55,12 @@ namespace Forestlevel
             if (cameraTransform == null && Camera.main != null)
                 cameraTransform = Camera.main.transform;
 
+        }
+
+        void Start()
+        {
             SetStrategy(new TraversalMovement());
+            
         }
 
         void OnEnable()
